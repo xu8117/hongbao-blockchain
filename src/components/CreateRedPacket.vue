@@ -1,6 +1,7 @@
 <script>
 import { chains } from "@/assets/js/chains";
 import { ethers } from "ethers";
+import { getWeb3Provider } from "@/utils/WalletUtil";
 
 export default {
   data() {
@@ -113,7 +114,7 @@ export default {
     },
 
     isValidBN(s, decimals) {
-      let bn = toBN(s, decimals);
+      let bn = this.toBN(s, decimals);
       return bn !== null && !bn.isZero() && !bn.isNegative();
     },
 
@@ -125,20 +126,6 @@ export default {
         return false;
       }
     },
-    getWeb3Provider() {
-      if (!window.web3Provider) {
-        if (!window.ethereum) {
-          console.error("there is no web3 provider.");
-          return null;
-        }
-        window.web3Provider = new ethers.providers.Web3Provider(
-          window.ethereum,
-          "any",
-        );
-      }
-      return window.web3Provider;
-    },
-
     showAlert(title, message) {
       /*let m = $("#alertModal");
       m.find(".x-title").text(title);
@@ -222,10 +209,13 @@ export default {
         value,
         redPacketId = 0;
       if (!this.ready) {
-        return showAlert("Error", "Please connect to wallet first!");
+        return this.showAlert("Error", "Please connect to wallet first!");
       }
       if (this.wrongNetwork) {
-        return showAlert("Error", "The connected network is not supported!");
+        return this.showAlert(
+          "Error",
+          "The connected network is not supported!",
+        );
       }
       // important: account must be lowercase:
       account = this.account.toLowerCase();
@@ -233,18 +223,18 @@ export default {
         tokenAddress = this.ETH_ADDRESS;
         decimals = 18;
       } else {
-        if (!isValidAddress(this.tokenAddress)) {
-          return showAlert("Error", "Token address is invalid!");
+        if (!this.isValidAddress(this.tokenAddress)) {
+          return this.showAlert("Error", "Token address is invalid!");
         }
         tokenAddress = this.tokenAddress;
-        let loading1 = showLoading(
+        let loading1 = this.showLoading(
             "Get ERC Token",
             "Get ERC token information...",
           ),
           erc1 = new ethers.Contract(
             tokenAddress,
             this.ERC20_ABI,
-            this.getWeb3Provider().getSigner(),
+            getWeb3Provider().getSigner(),
           );
         try {
           decimals = await erc1.decimals();
@@ -259,57 +249,57 @@ export default {
           );
         } catch (err) {
           loading1.close();
-          return showAlert(
+          return this.showAlert(
             "Error",
-            "Failed to get decimals of token: " + translateError(err),
+            "Failed to get decimals of token: " + this.translateError(err),
           );
         }
       }
       // check tokenAmount:
-      if (!isValidBN(this.tokenAmount, decimals)) {
-        return showAlert("Error", "Bonus amount is invalid!");
+      if (!this.isValidBN(this.tokenAmount, decimals)) {
+        return this.showAlert("Error", "Bonus amount is invalid!");
       }
-      tokenAmount = toBN(this.tokenAmount, decimals);
+      tokenAmount = this.toBN(this.tokenAmount, decimals);
       total = parseInt(this.total);
       if (isNaN(total) || total < 0 || total > 100000) {
-        return showAlert("Error", "Max perticipates is invalid!");
+        return this.showAlert("Error", "Max perticipates is invalid!");
       }
       bonusType = parseInt(this.bonusType);
       // check password:
       password = this.password.trim();
       if (password === "") {
-        return showAlert("Error", "Password must be set!");
+        return this.showAlert("Error", "Password must be set!");
       }
       // check condition:
       if (this.conditionAddress.trim() !== "") {
-        if (!isValidAddress(this.conditionAddress)) {
-          return showAlert("Error", "Validator address is invalid!");
+        if (!this.isValidAddress(this.conditionAddress)) {
+          return this.showAlert("Error", "Validator address is invalid!");
         }
         conditionAddress = this.conditionAddress;
-        let loading2 = showLoading(
+        let loading2 = this.showLoading(
             "Check Validator",
             "Check validator contract...",
           ),
           cc = new ethers.Contract(
             conditionAddress,
             this.CONDITION_ABI,
-            this.getWeb3Provider().getSigner(),
+            getWeb3Provider().getSigner(),
           );
         try {
           await cc.check(this.RED_PACKET_ADDR, 1, account);
           loading2.close();
         } catch (err) {
           loading2.close();
-          return showAlert(
+          return this.showAlert(
             "Error",
-            "Failed to check validator contract: " + translateError(err),
+            "Failed to check validator contract: " + this.translateError(err),
           );
         }
       }
 
       // now generate password hash:
-      passcode = ethers.BigNumber.from(keccak(account + password));
-      let { proof, publicSignals } = await prove(
+      passcode = ethers.BigNumber.from(this.keccak(account + password));
+      let { proof, publicSignals } = await this.prove(
         ethers.BigNumber.from("0"),
         passcode,
       );
@@ -320,15 +310,15 @@ export default {
       );
       console.log("passcode hash = ", passcodeHash.toHexString());
 
-      let loading = showLoading("Create", "Check balance..."),
+      let loading = this.showLoading("Create", "Check balance..."),
         redPacket = new ethers.Contract(
           this.RED_PACKET_ADDR,
           this.RED_PACKET_ABI,
-          this.getWeb3Provider().getSigner(),
+          getWeb3Provider().getSigner(),
         );
       try {
         if (tokenAddress === this.ETH_ADDRESS) {
-          let eth_balance = await this.getWeb3Provider().getBalance(account);
+          let eth_balance = await getWeb3Provider().getBalance(account);
           if (eth_balance.lt(tokenAmount)) {
             throw "You don't have enough " + this.nativeToken + ".";
           }
@@ -336,7 +326,7 @@ export default {
           let erc = new ethers.Contract(
               tokenAddress,
               this.ERC20_ABI,
-              this.getWeb3Provider().getSigner(),
+              getWeb3Provider().getSigner(),
             ),
             erc_symbol = await erc.symbol(),
             erc_balance = await erc.balanceOf(account);
@@ -425,7 +415,7 @@ export default {
           chainId +
           "&id=" +
           redPacketId;
-        showInfo(
+        this.showInfo(
           "Success",
           "<p>Red packet created successfully!</p><p>Password: " +
             password +
@@ -437,7 +427,7 @@ export default {
         );
       } catch (err) {
         loading.close();
-        return showAlert("Error", translateError(err));
+        return this.showAlert("Error", this.translateError(err));
       }
     },
     abbrAddress(addr) {
@@ -528,7 +518,7 @@ export default {
     },
     async connectWallet() {
       console.log("try connect wallet...");
-      if (this.getWeb3Provider() === null) {
+      if (getWeb3Provider() === null) {
         console.error("there is no web3 provider.");
         return false;
       }
