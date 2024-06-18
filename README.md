@@ -1,5 +1,9 @@
 # hongbao
 
+# 区块链红包
+
+区块链学习实践项目
+
 ## Project setup
 ```
 npm install
